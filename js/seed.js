@@ -5,6 +5,37 @@
 
   if (localStorage.getItem(SEED_FLAG)) return;
 
+  // Centroides calculados del GeoJSON oficial de Bogotá
+  const C = {
+    'Usaquén': [4.72033, -74.01426],
+    'Suba': [4.77307, -74.08913],
+    'Engativá': [4.71606, -74.11150],
+    'Barrios Unidos': [4.66821, -74.07663],
+    'Chapinero': [4.63763, -74.02210],
+    'Fontibón': [4.67253, -74.15239],
+    'Teusaquillo': [4.64443, -74.08396],
+    'Santa Fe': [4.59490, -74.03768],
+    'Los Mártires': [4.60854, -74.08011],
+    'La Candelaria': [4.59755, -74.07081],
+    'Antonio Nariño': [4.59218, -74.11336],
+    'Puente Aranda': [4.60974, -74.11804],
+    'San Cristóbal': [4.54956, -74.06992],
+    'Rafael Uribe Uribe': [4.56004, -74.10733],
+    'Tunjuelito': [4.57303, -74.14209],
+    'Usme': [4.45667, -74.12642],
+    'Kennedy': [4.62815, -74.16113],
+    'Bosa': [4.61840, -74.18969],
+    'Ciudad Bolívar': [4.47025, -74.14508],
+    'Sumapaz': [4.01515, -74.26902],
+  };
+
+  // Desplazamientos para distribuir 8 farmacias dentro de cada localidad
+  const offsets = [
+    [-0.008, -0.006], [0.007, -0.010], [-0.005, 0.009],
+    [0.009, 0.007],  [-0.012, 0.004], [0.011, -0.005],
+    [-0.009, -0.011], [0.004, 0.012],
+  ];
+
   const farmacias = [
     // --- Usaquén ---
     { nombre: 'Farmacia Santa Bibiana', direccion: 'Carrera 7 # 120-30', anios: 15, proposito: 'Atención farmacéutica integral y dispensación de medicamentos de alta complejidad', localidad: 'Usaquén' },
@@ -207,12 +238,18 @@
     { nombre: 'FarmaPáramo Sostenible', direccion: 'Vereda Los Ríos, Finca 7', anios: 5, proposito: 'Farmacia ecológica con intercambio de plantas medicinales', localidad: 'Sumapaz' },
   ];
 
-  localStorage.setItem(SEED_FLAG, '1');
-  localStorage.setItem('farmabogota.pharmacies.v1', JSON.stringify(
-    farmacias.map((f, i) => ({
+  const seedData = farmacias.map((f, i) => {
+    const c = C[f.localidad];
+    const off = offsets[i % offsets.length];
+    return {
       id: i + 1,
       ...f,
+      lat: c ? +(c[0] + off[0]).toFixed(6) : 4.6,
+      lng: c ? +(c[1] + off[1]).toFixed(6) : -74.1,
       createdAt: new Date(2025, 0, 1 + i).toISOString(),
-    }))
-  ));
+    };
+  });
+
+  localStorage.setItem(SEED_FLAG, '1');
+  localStorage.setItem('farmabogota.pharmacies.v1', JSON.stringify(seedData));
 })();

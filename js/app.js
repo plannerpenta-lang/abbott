@@ -18,6 +18,7 @@
   let currentLoc = null;
   let currentFilter = '';
   let counter = pharmacies.length ? Math.max(...pharmacies.map(p => p.id || 0)) : 0;
+  let tempMarker = null;
 
   // ----- Elementos DOM -----
   const $ = (s) => document.querySelector(s);
@@ -90,6 +91,7 @@
     });
     layer.on('click', (e) => {
       L.DomEvent.stopPropagation(e);
+      placeMarker(e.latlng);
       openModal(name);
     });
 
@@ -170,34 +172,39 @@
       showToast('Error cargando el mapa');
     });
 
+  // ----- Pin temporal al hacer clic -----
+  function placeMarker(latlng) {
+    if (tempMarker) map.removeLayer(tempMarker);
+    tempMarker = L.marker(latlng, {
+      draggable: true,
+      icon: L.divIcon({
+        className: 'ph-marker-temp',
+        html: '<div class="ph-marker-bubble" style="background:#C92A2A;width:32px;height:32px;font-size:15px">+</div>',
+        iconSize: [32, 32],
+        iconAnchor: [16, 16],
+      }),
+    }).addTo(map);
+  }
+
   // ----- Marcadores -----
   function renderMarkers() {
     markersLayer.clearLayers();
-    const grouped = {};
+    const counts = {};
+    pharmacies.forEach(p => { counts[p.localidad] = (counts[p.localidad] || 0) + 1; });
+    const nums = {};
     pharmacies.forEach(p => {
-      (grouped[p.localidad] = grouped[p.localidad] || []).push(p);
-    });
-    Object.entries(grouped).forEach(([loc, items]) => {
-      // Coger centroide de la localidad desde el polígono
-      const feature = locLayer.getLayers().find(l =>
-        l.feature && l.feature.properties.nombre === loc
-      );
-      if (!feature) return;
-      const center = feature.getBounds().getCenter();
-      items.forEach((p, i) => {
-        // Pequeño offset en cascada
-        const offsetLat = i * 0.0008;
-        const offsetLng = i * 0.0010;
-        const icon = L.divIcon({
-          className: 'ph-marker',
-          html: `<div class="ph-marker-bubble">${i + 1}</div>`,
-          iconSize: [26, 26],
-          iconAnchor: [13, 13],
-        });
-        const m = L.marker([center.lat + offsetLat, center.lng + offsetLng], { icon })
-          .bindPopup(buildPopup(p, i + 1, items.length));
-        m.addTo(markersLayer);
+      if (p.lat == null || p.lng == null) return;
+      nums[p.localidad] = (nums[p.localidad] || 0) + 1;
+      const num = nums[p.localidad];
+      const icon = L.divIcon({
+        className: 'ph-marker',
+        html: `<div class="ph-marker-bubble">${num}</div>`,
+        iconSize: [26, 26],
+        iconAnchor: [13, 13],
       });
+      const m = L.marker([p.lat, p.lng], { icon })
+        .bindPopup(buildPopup(p, num, counts[p.localidad]));
+      m.addTo(markersLayer);
     });
   }
 
@@ -310,6 +317,7 @@
   }
   function closeModal() {
     modalBackdrop.classList.remove('open');
+    if (tempMarker) { map.removeLayer(tempMarker); tempMarker = null; }
     currentLoc = null;
   }
 
@@ -378,12 +386,16 @@
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     if (!currentLoc) return;
+    if (!tempMarker) { showToast('Primero haz clic en una localidad del mapa'); return; }
+    const ll = tempMarker.getLatLng();
     const data = {
       nombre: $('#f-nombre').value.trim(),
       direccion: $('#f-direccion').value.trim(),
       anios: parseInt($('#f-anios').value, 10),
       proposito: $('#f-proposito').value.trim(),
       localidad: currentLoc,
+      lat: ll.lat,
+      lng: ll.lng,
     };
     if (!data.nombre || !data.direccion || !data.proposito || isNaN(data.anios)) return;
     addPharmacy(data);
@@ -394,6 +406,11 @@
   filterLoc.addEventListener('change', (e) => {
     currentFilter = e.target.value;
     renderList();
+  });
+
+  // ----- Clic en mapa vacío -----
+  map.on('click', (e) => {
+    if (tempMarker) return; // ya hay un pin activo
   });
 
   // ----- Popup "Eliminar" -----
