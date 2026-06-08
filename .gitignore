@@ -1,0 +1,16 @@
+# Python / OS
+__pycache__/
+*.py[cod]
+.DS_Store
+Thumbs.db
+
+# Editores
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Datos locales del navegador (no se commitea, está en localStorage del cliente)
