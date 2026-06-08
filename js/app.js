@@ -36,7 +36,6 @@
   const countLoc = $('#count-loc');
 
   // ----- Mapa Leaflet -----
-  // Centrado en la zona urbana de Bogotá (sin tiles de fondo, look cartográfico limpio)
   const map = L.map('map', {
     center: [4.655, -74.085],
     zoom: 12,
@@ -45,6 +44,12 @@
     zoomControl: true,
     attributionControl: true,
   });
+
+  // Tiles de OpenStreetMap (mapa real con calles y referencias)
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxZoom: 19,
+  }).addTo(map);
 
   // Layer para polígonos de localidades
   const locLayer = L.geoJSON(null, {
@@ -112,6 +117,35 @@
     })
     .then(data => {
       locLayer.addData(data);
+
+      // Remapear nombre oficial (LOCNOMBRE) a nombre amigable para mostrar
+      const nameMap = {
+        'USAQUEN': 'Usaquén',
+        'SUBA': 'Suba',
+        'ENGATIVA': 'Engativá',
+        'BARRIOS UNIDOS': 'Barrios Unidos',
+        'CHAPINERO': 'Chapinero',
+        'FONTIBON': 'Fontibón',
+        'TEUSAQUILLO': 'Teusaquillo',
+        'SANTA FE': 'Santa Fe',
+        'LOS MARTIRES': 'Los Mártires',
+        'CANDELARIA': 'La Candelaria',
+        'ANTONIO NARIÑO': 'Antonio Nariño',
+        'PUENTE ARANDA': 'Puente Aranda',
+        'SAN CRISTOBAL': 'San Cristóbal',
+        'RAFAEL URIBE URIBE': 'Rafael Uribe Uribe',
+        'TUNJUELITO': 'Tunjuelito',
+        'USME': 'Usme',
+        'KENNEDY': 'Kennedy',
+        'BOSA': 'Bosa',
+        'CIUDAD BOLIVAR': 'Ciudad Bolívar',
+        'SUMAPAZ': 'Sumapaz',
+      };
+      data.features.forEach(f => {
+        const raw = String(f.properties.LOCNOMBRE || '').trim();
+        f.properties.nombre = nameMap[raw] || raw;
+      });
+
       // Ajustar vista al bbox de la zona urbana (excluyendo Sumapaz, que es enorme y aplastaría el zoom)
       const urbanBounds = [];
       locLayer.eachLayer(l => {
